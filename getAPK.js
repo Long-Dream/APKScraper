@@ -15,7 +15,7 @@ function getAPK(url, path, apkName, callback){
     console.log(`开始下载 ${url} 的 apk 文件...`)
 
     // 建立请求
-    var req = request.get(url);
+    var req = request.get(url).timeout(300000);
 
     // 获取 apk 的名称
     var match = (/\/([^\/]*\.apk)\??/).exec(req.url);

@@ -31,7 +31,7 @@ getCategory(function(){
  */
 function getAPPName(id, next){
 
-    console.log(`开始获取目录 ${category[id].href} 第 category[id].curPage 下的 APP 内容`);
+    console.log(`开始获取目录 ${category[id].href} 第 ${category[id].curPage} 下的 APP 内容`);
 
     // 计算要访问的地址
     // 第一页的形式为 http://www.wandoujia.com/category/408
@@ -123,29 +123,58 @@ function getMoreAPPName(next){
  */
 function stepDownloadAndAnalyse(){
 
+    if(list.length === 0) {setTimeout(function(){stepDownloadAndAnalyse()}, 5000);}
     var apkToGet = list.pop();
 
     console.log(`list 数组里还有 ${list.length} 个元素`)
-    if(list.length < 5) getMoreAPPName();
+    if(list.length < 15) getMoreAPPName();
 
-    getAPK(`http://www.wandoujia.com/apps/${apkToGet.name}/download`, __dirname + "/apkDownload/", apkToGet.name + ".apk", function(err){
+    // 在下载并分析应用前, 先检查是否已经分析过了
+    db.collection("Wandoujia").findOne({name : apkToGet.name}, function(err, result){
         if(err) throw err;
 
-        doSootAnalyse(__dirname + "/apkDownload/" +　apkToGet.name + ".apk", __dirname + "/newSoot/newSoot.jar", __dirname + "/result/", ["analysis_api", "analysis_order", "analysis_permission", "analysis_sdk"], function(err, result){
-            if(err) throw err;
+        if(result && !result.javaErr){
+            console.log(`${apkToGet.name} 之前已被分析过, 故跳过!`);
+            stepDownloadAndAnalyse();
+            return;
+        }
 
-            Object.assign(result, apkToGet);
+        if(result){
+            db.collection("Wandoujia").remove(result, function(err){
+                if(err) throw err;
+                console.log(`${apkToGet.name} 之前已被分析过但含有错误, 已删除之前记录, 并即将开始重新分析!`)
+            })
+        }
 
-            db.collection("Wandoujia").insert(result, function(err){
+        console.log(`即将开始下载并分析 ${apkToGet.name}`);
+
+        // 开始下载并分析
+        getAPK(`http://www.wandoujia.com/apps/${apkToGet.name}/download`, __dirname + "/apkDownload/", apkToGet.name + ".apk", function(err){
+            if(err) {
+                console.log("下载应用中发送错误 : " + err);
+                return stepDownloadAndAnalyse();
+            }
+
+            doSootAnalyse(__dirname + "/apkDownload/" +　apkToGet.name + ".apk", __dirname + "/newSoot/newSoot.jar", __dirname + "/result/", ["analysis_api", "analysis_order", "analysis_permission", "analysis_sdk"], function(err, result){
                 if(err) throw err;
 
-                console.log(`${result.name} 的信息已加入数据库`)
+                Object.assign(result, apkToGet);
 
-                // 继续下一步操作
-                stepDownloadAndAnalyse();
+                db.collection("Wandoujia").insert(result, function(err){
+                    if(err) throw err;
+
+                    console.log(`${result.name} 的信息已加入数据库`)
+
+                    // 继续下一步操作
+                    stepDownloadAndAnalyse();
+                })
             })
         })
+
+
     })
+
+    
 }
 
 // http://www.wandoujia.com/apps/com.tujia.hotel/download

@@ -22,7 +22,7 @@ function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
     console.log(`开始分析 ${path} 的 apk 文件!`)
 
     // 先清空结果文件夹
-    clearDir(resultPath);
+    // clearDir(resultPath);
 
     // 新建空文件
     creatEmptyFile(resultPath, resultArr)
@@ -44,9 +44,9 @@ function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
 
     }
 
-    console.log(`java -jar -Xmn512m -Xms2048m -Xmx2048m ${javaPath} ${path}`)
+    console.log(`java -jar -Xmn412m -Xms1010m -Xmx1010m ${javaPath} ${path}`)
 
-    var javaThread = cp.exec(`java -jar -Xmn512m -Xms2048m -Xmx2048m ${javaPath} ${path}`, {
+    var javaThread = cp.exec(`java -jar -Xmn412m -Xms1010m -Xmx1010m ${javaPath} ${path}`, {
         maxBuffer: 50000 * 1024,
         timeout : 120000        // 若在 120 秒内没有分析完成, 则进行下一个操作
     },function(err, stdout, stderr){
