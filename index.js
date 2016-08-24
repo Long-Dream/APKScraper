@@ -36,7 +36,7 @@ function getAPPName(id, next){
     // 计算要访问的地址
     // 第一页的形式为 http://www.wandoujia.com/category/408
     // 第二页的形式为 http://www.wandoujia.com/category/408_2
-    var url = category[id].curPage === 1? category[id].href : category[id].href + "_" + page
+    var url = category[id].curPage === 1? category[id].href : category[id].href + "_" + category[id].curPage;
 
     category[id].curPage ++;
 
