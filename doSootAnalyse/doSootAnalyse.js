@@ -46,7 +46,7 @@ function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
 
     console.log(`java -jar ${javaPath} ${path}`)
 
-    var javaThread = cp.exec(`java -jar ${javaPath} ${path}`, {
+    var javaThread = cp.exec(`java -jar -Xmn512m -Xms2048m -Xmx2048m ${javaPath} ${path}`, {
         maxBuffer: 50000 * 1024
     },function(err, stdout, stderr){
         if(err) {

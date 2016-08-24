@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "cheerio": "^0.22.0",
+    "mongodb": "^2.2.8",
+    "superagent": "^2.2.0"
+  }
+}
