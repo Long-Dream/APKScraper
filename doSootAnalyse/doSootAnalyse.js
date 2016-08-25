@@ -29,21 +29,7 @@ function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
     creatEmptyFile(resultPath, resultArr)
 
     // 储存有分析结果的对象
-    var result = {
-
-        // 运行 java 程序的过程中报错
-        textErr : undefined,
-
-        // 开启 java 程序的过程中报错
-        javaErr : undefined,
-
-        // 一般分析结果
-        analysis_api : undefined,
-        analysis_order : undefined,
-        analysis_permission : undefined,
-        analysis_sdk : undefined,
-
-    }
+    var result = {};
 
     console.log(`java -jar -Xmn412m -Xms1010m -Xmx1010m ${javaPath} ${path}`)
 
@@ -54,6 +40,8 @@ function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
         if(err) {
 
             errCounter++;
+            console.log(`连续出错次数已达 ${errCounter} 次!`);
+
             if(errCounter === 5) {
                 console.log(process.memoryUsage())
                 throw new Error("连续出错次数达到 5 次!")
@@ -75,10 +63,11 @@ function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
 
     javaThread.on("exit", function(state){
 
-        errCounter = 0;
-
         // 如果 java 进程是正常结束的, 那么读取所有分析结果, 并存入数据库
         if(state === 0){
+
+            errCounter = 0;
+
             readFileToHandle(resultPath, resultArr, function(fileObj){
 
                 // 将换行符变成标准的 HTML 的换行

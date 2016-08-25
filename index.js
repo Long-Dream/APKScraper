@@ -130,11 +130,10 @@ function getMoreAPPName(next){
  */
 function stepDownloadAndAnalyse(){
 
-    if(list.length === 0) {setTimeout(function(){stepDownloadAndAnalyse()}, 5000);}
+    if(list.length === 0) {return setTimeout(function(){stepDownloadAndAnalyse()}, 5000);}
     var apkToGet = list.pop();
 
     console.log(`list 数组里还有 ${list.length} 个元素`)
-    if(list.length < 15) getMoreAPPName();
 
     // 在下载并分析应用前, 先检查是否已经分析过了
     db.collection("Wandoujia").findOne({name : apkToGet.name}, function(err, result){
