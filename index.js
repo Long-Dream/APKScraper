@@ -22,6 +22,12 @@ getCategory(function(){
     })
 });
 
+// 定时扩充目录
+setInterval(function(){
+    if(list.length > 100) return;
+    getMoreAPPName();
+}, 5000)
+
 
 /**
  * 在目录下获取文件名称
@@ -31,7 +37,7 @@ getCategory(function(){
  */
 function getAPPName(id, next){
 
-    console.log(`开始获取目录 ${category[id].href} 第 ${category[id].curPage} 下的 APP 内容`);
+    console.log(`开始获取目录 ${category[id].href} 第 ${category[id].curPage} 页下的 APP 内容`);
 
     // 计算要访问的地址
     // 第一页的形式为 http://www.wandoujia.com/category/408
@@ -56,10 +62,11 @@ function getAPPName(id, next){
                     chsname : $(this).find("h2.app-title-h2 a").text(),
                     num     : $(this).find("div.meta span").eq(0).text(),
                     size    : $(this).find("div.meta span").eq(2).text(),
+                    type    : category[id].title
                 })
             })
 
-            console.log("目录获取完成!")
+            console.log(`目录获取完成, 此时列表里含有 ${list.length} 个app信息!`)
 
             if(next) next();
 
@@ -155,10 +162,12 @@ function stepDownloadAndAnalyse(){
                 return stepDownloadAndAnalyse();
             }
 
-            doSootAnalyse(__dirname + "/apkDownload/" +　apkToGet.name + ".apk", __dirname + "/newSoot/newSoot.jar", __dirname + "/result/", ["analysis_api", "analysis_order", "analysis_permission", "analysis_sdk"], function(err, result){
+            doSootAnalyse(__dirname + "/apkDownload/" +　apkToGet.name + ".apk", __dirname + "/newSoot/newSoot.jar", __dirname + "/result/", ["analysis_api", "analysis_order", "analysis_permission", "analysis_sdk", "analysis_minapilevel"], function(err, result){
                 if(err) throw err;
 
-                Object.assign(result, apkToGet);
+                Object.assign(result, apkToGet, {
+                    query_time : new Date().toLocaleString()
+                });
 
                 db.collection("Wandoujia").insert(result, function(err){
                     if(err) throw err;

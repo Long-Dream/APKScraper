@@ -5,7 +5,8 @@ var cp         = require('child_process');
 
 // doSootAnalyse("../apkDownload/0e5752b59859c62a40ec7b0d5d045714.apk", "../newSoot/newSoot.jar", "../result/", ["analysis_api", "analysis_order", "analysis_permission", "analysis_sdk"], function(){})
 
-
+// 先临时设置一个计数器, 计数连续执行程序出错的次数, 如果达到 5 就抛出错误
+var errCounter = 0;
 
 /**
  * 进行分析, 并返回分析结果
@@ -52,6 +53,12 @@ function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
     },function(err, stdout, stderr){
         if(err) {
 
+            errCounter++;
+            if(errCounter === 5) {
+                console.log(process.memoryUsage())
+                throw new Error("连续出错次数达到 5 次!")
+            }
+
             result.javaErr = html_encode(err.toString());
 
             callback(null, result);
@@ -68,9 +75,11 @@ function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
 
     javaThread.on("exit", function(state){
 
+        errCounter = 0;
+
         // 如果 java 进程是正常结束的, 那么读取所有分析结果, 并存入数据库
         if(state === 0){
-            readFileToHandle(resultPath, ["analysis_api", "analysis_order", "analysis_permission", "analysis_sdk"], function(fileObj){
+            readFileToHandle(resultPath, resultArr, function(fileObj){
 
                 // 将换行符变成标准的 HTML 的换行
                 for (let i in fileObj){
