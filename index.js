@@ -70,13 +70,6 @@ function getAPPName(id, next){
 
             if(next) next();
 
-            // // 随机下载一个软件
-            // getAPK(`http://www.wandoujia.com/apps/${list[5].name}/download`, __dirname + "/apkDownload/", list[5].name + ".apk", function(err){
-            //     if(err) throw err;
-
-            //     // 下载结束后进行分析
-            //     doSootAnalyse(__dirname + "/apkDownload/" +　list[5].name + ".apk", __dirname + "/newSoot/newSoot.jar", __dirname + "/result/", ["analysis_api", "analysis_order", "analysis_permission", "analysis_sdk"], function(){})
-            // })
         })
 }
 

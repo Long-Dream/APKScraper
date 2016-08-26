@@ -68,6 +68,10 @@ function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
 
             errCounter = 0;
 
+            // 杀死残余的 java 进程
+            if (process.platform === "win32") killThreadByName("java.exe");
+            if (process.platform === "linux") killThreadByName("java");
+
             readFileToHandle(resultPath, resultArr, function(fileObj){
 
                 // 将换行符变成标准的 HTML 的换行
@@ -152,5 +156,89 @@ function creatEmptyFile(resultPath, resultArr){
     })
 }
 
+/**
+ * 根据进程名称杀死所有符合该进程名的进程
+ * @param  {string}   name     进程名称
+ * @return {[type]}      [description]
+ */
+function killThreadByName(name){
+    if (process.platform === "win32") {
+        findPIDbyNameInWindows(name, function(err, pidArr){
+            if(err) throw err;
+
+            pidArr.forEach(function(item){
+                cp.exec(`taskkill /F /PID ${item}`, function(err, stdout, stderr){
+                    if(err) {return console.log(err)};
+                    console.log(stdout, stderr);
+                })
+            })
+        })
+    } else if (process.platform === "linux") {
+        findPIDbyNameInLinux(name, function(err, pidArr){
+            if(err) throw err;
+
+            pidArr.forEach(function(item){
+                cp.exec(`kill -s 9 ${item}`, function(err, stdout, stderr){
+                    if(err) {return console.log(err)};
+                    console.log(stdout, stderr);
+                })
+            })
+        })
+    } else {
+        throw new Error("杀死进程任务，尚不兼容当前平台")
+    }
+}
+
+/**
+ * 根据进程名称获取所有符合该进程名的进程的 PID --- Windows 平台
+ * @param  {string}   name     进程名称
+ * @param  {Function} callback 回调函数
+ *                             参数 2 是包含有所有符合条件的进程的数组
+ */
+function findPIDbyNameInWindows(name, callback) {
+
+    var pidArr = [];
+
+    if (process.platform !== "win32") {throw new Error("操作系统平台不是 win32, 请检查代码");}
+    cp.exec("tasklist", function(err, stdout, stderr){
+        if(err){ callback(err); }
+
+        stdout.split('\n').filter(function(line){
+            var p = line.trim().split(/\s+/), pname=p[0], pid=p[1];
+            if(pname.toLowerCase().indexOf(name) === 0 && parseInt(pid)){
+                pidArr.push(pid);
+            }
+        });
+
+        callback(null, pidArr)
+    })
+}
+
+/**
+ * 根据进程名称获取所有符合该进程名的进程的 PID --- Linux 平台
+ * @param  {string}   name     进程名称
+ * @param  {Function} callback 回调函数
+ *                             参数 2 是包含有所有符合条件的进程的数组
+ */
+function findPIDbyNameInLinux(name, callback) {
+
+    var pidArr = [];
+
+    if (process.platform !== "linux") {throw new Error("操作系统平台不是 linux, 请检查代码");}
+    cp.exec("ps -A", function(err, stdout, stderr){
+        if(err){ callback(err); }
+
+        stdout.split('\n').filter(function(line){
+            var p = line.trim().split(/\s+/);
+            if(p.length === 1) return;
+            var pname=p[3], pid=p[0];
+            if(pname.toLowerCase().indexOf(name) === 0 && parseInt(pid)){
+                pidArr.push(pid);
+            }
+        });
+
+        callback(null, pidArr)
+    })
+}
 
 module.exports = doSootAnalyse;
