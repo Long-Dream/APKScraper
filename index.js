@@ -9,12 +9,12 @@ var doSootAnalyse = require("./doSootAnalyse/doSootAnalyse.js")
 var list        = [];
 var category    = [];
 
-// getAPPName("http://www.wandoujia.com/category/408", 12)
-// getAPK("http://www.wandoujia.com/apps/com.hoteltonight.android.prod/download", "./apkDownload/", "com.lanteanstudio.compass" + ".apk", function(err){
-//     if(err) throw err;
-//     console.log(1)
-// })
+var collectionName = "Wandoujia"
 
+var resultArr = ["analysis_api", "analysis_order", "analysis_permission", "analysis_sdk", "analysis_minapilevel", "analysis_activity_and_action"];
+
+// 先临时设置一个计数器, 计数连续执行程序出错的次数, 如果达到 5 就抛出错误
+var errCounter = 0;
 
 getCategory(function(){
     getMoreAPPName(function(){
@@ -26,7 +26,7 @@ getCategory(function(){
 setInterval(function(){
     if(list.length > 100) return;
     getMoreAPPName();
-}, 5000)
+}, 2000)
 
 
 /**
@@ -48,7 +48,7 @@ function getAPPName(id, next){
 
     request.get(url)
         .end(function(err, data){
-            if(err) throw err;
+            if(err) return console.log(err);
             
             var $ = cheerio.load(data.text);
 
@@ -124,12 +124,16 @@ function getMoreAPPName(next){
 function stepDownloadAndAnalyse(){
 
     if(list.length === 0) {return setTimeout(function(){stepDownloadAndAnalyse()}, 5000);}
+
     var apkToGet = list.pop();
+
+    // 判断是否是已有错误的 flag
+    var secondFlag = 0;
 
     console.log(`list 数组里还有 ${list.length} 个元素`)
 
     // 在下载并分析应用前, 先检查是否已经分析过了
-    db.collection("Wandoujia").findOne({name : apkToGet.name}, function(err, result){
+    db.collection(collectionName).findOne({name : apkToGet.name}, function(err, result){
         if(err) throw err;
 
         if(result && !result.javaErr){
@@ -138,10 +142,23 @@ function stepDownloadAndAnalyse(){
             return;
         }
 
+        if(result && result.secondFlag === 1){
+            console.log(`${apkToGet.name} 之前分析中连续两次发生错误, 故跳过!`);
+            stepDownloadAndAnalyse();
+            return;
+        }
+
         if(result){
-            db.collection("Wandoujia").remove(result, function(err){
+
+            // 数据库中有记录但是 secondFlag 还是 0, 说明第一次分析中发生了错误, 将 secondFlag 置为 1 后开始第二次分析
+            secondFlag = 1;
+
+            // 因为以前出现过错误，所以再出现错误也不稀奇，故此次分析不在错误计数中
+            if (errCounter > 0) errCounter--;
+
+            db.collection(collectionName).remove(result, function(err){
                 if(err) throw err;
-                console.log(`${apkToGet.name} 之前已被分析过但含有错误, 已删除之前记录, 并即将开始重新分析!`)
+                console.log(`${apkToGet.name} 之前已被分析过但含有错误, 已删除之前记录, 并即将开始第二次分析!`)
             })
         }
 
@@ -154,28 +171,42 @@ function stepDownloadAndAnalyse(){
                 return stepDownloadAndAnalyse();
             }
 
-            doSootAnalyse(__dirname + "/apkDownload/" +　apkToGet.name + ".apk", __dirname + "/newSoot/newSoot.jar", __dirname + "/result/", ["analysis_api", "analysis_order", "analysis_permission", "analysis_sdk", "analysis_minapilevel"], function(err, result){
+            console.log(`开始分析 ${apkToGet.name} 的 apk 文件!`)
+
+            doSootAnalyse(__dirname + "/apkDownload/" +　apkToGet.name + ".apk", __dirname + "/newSoot/newSoot.jar", __dirname + "/result/", resultArr, function(err, result){
                 if(err) throw err;
 
+                console.log(`分析完成 ${apkToGet.name}!`);
+
+                if (result.javaErr) {
+
+                    errCounter++;
+                    console.log(`连续出错次数已达 ${errCounter} 次!`);
+
+                    if(errCounter === 5) {
+                        console.log(process.memoryUsage())
+                        throw new Error("连续出错次数达到 5 次!")
+                    }
+                } else {
+                    if (errCounter > 0) errCounter--;
+                }
+
                 Object.assign(result, apkToGet, {
-                    query_time : new Date().toLocaleString()
+                    query_time : new Date().toLocaleString(),
+                    secondFlag : secondFlag
                 });
 
-                db.collection("Wandoujia").insert(result, function(err){
+                db.collection(collectionName).insert(result, function(err){
                     if(err) throw err;
 
-                    console.log(`${result.name} 的信息已加入数据库`)
+                    console.log(`信息已加入数据库 :　${result.name}`)
 
                     // 继续下一步操作
                     stepDownloadAndAnalyse();
                 })
             })
         })
-
-
     })
-
-    
 }
 
 // http://www.wandoujia.com/apps/com.tujia.hotel/download

@@ -12,7 +12,10 @@ var fs      = require("fs");
  */
 function getAPK(url, path, apkName, callback){
 
-    console.log(`开始下载 ${url} 的 apk 文件...`)
+    // 因为有如果发送超时错误，error 和 end 事件都会被调用的坑，所以添加一个 flag 判断错误是否已经发生
+    var errFlag = 0;
+
+    console.log(`开始下载 ${apkName} 文件...`)
 
     // 建立请求
     var req = request.get(url).timeout(300000);
@@ -25,15 +28,19 @@ function getAPK(url, path, apkName, callback){
     req.pipe(stream)
 
     // 下载成功后调用回调函数
+    // 坑：下载过程中如果发送超时错误，则 error 和 end 事件都会被调用！
     req.on("end", function(){
 
-        console.log("apk 文件下载完成!")
+        if(errFlag === 1) return;
+
+        console.log(`结束下载 ${apkName} 下载完成!`)
 
         callback(null)
     })
 
     // 出现失败后调用回调函数
     req.on("error", function(err){
+        errFlag = 1;
         callback(err);
     })
 

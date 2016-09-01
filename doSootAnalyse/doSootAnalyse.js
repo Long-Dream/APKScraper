@@ -1,12 +1,10 @@
-"use strict";
+"use strict"; 
 
 var fs         = require('fs');
 var cp         = require('child_process');
 
 // doSootAnalyse("../apkDownload/0e5752b59859c62a40ec7b0d5d045714.apk", "../newSoot/newSoot.jar", "../result/", ["analysis_api", "analysis_order", "analysis_permission", "analysis_sdk"], function(){})
 
-// 先临时设置一个计数器, 计数连续执行程序出错的次数, 如果达到 5 就抛出错误
-var errCounter = 0;
 
 /**
  * 进行分析, 并返回分析结果
@@ -20,8 +18,6 @@ var errCounter = 0;
  */
 function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
 
-    console.log(`开始分析 ${path} 的 apk 文件!`)
-
     // 先清空结果文件夹
     // clearDir(resultPath);
 
@@ -31,23 +27,17 @@ function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
     // 储存有分析结果的对象
     var result = {};
 
-    console.log(`java -jar -Xmn412m -Xms1010m -Xmx1010m ${javaPath} ${path}`)
+    var cmd = `java -jar -Xmn412m -Xms1300m -Xmx1300m ${javaPath} ${path}`;
 
-    var javaThread = cp.exec(`java -jar -Xmn412m -Xms1010m -Xmx1010m ${javaPath} ${path}`, {
+    // console.log(cmd)
+
+    var javaThread = cp.exec(cmd, {
         maxBuffer: 50000 * 1024,
         timeout : 120000        // 若在 120 秒内没有分析完成, 则进行下一个操作
     },function(err, stdout, stderr){
         if(err) {
 
-            errCounter++;
-            console.log(`连续出错次数已达 ${errCounter} 次!`);
-
-            if(errCounter === 5) {
-                console.log(process.memoryUsage())
-                throw new Error("连续出错次数达到 5 次!")
-            }
-
-            result.javaErr = html_encode(err.toString());
+            result.javaErr = err.toString();
 
             callback(null, result);
         }
@@ -66,8 +56,6 @@ function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
         // 如果 java 进程是正常结束的, 那么读取所有分析结果, 并存入数据库
         if(state === 0){
 
-            errCounter = 0;
-
             // 杀死残余的 java 进程
             if (process.platform === "win32") killThreadByName("java.exe");
             if (process.platform === "linux") killThreadByName("java");
@@ -76,10 +64,8 @@ function doSootAnalyse(path, javaPath, resultPath, resultArr, callback){
 
                 // 将换行符变成标准的 HTML 的换行
                 for (let i in fileObj){
-                    result[i] = html_encode(fileObj[i]);
+                    result[i] = fileObj[i];
                 }
-
-                console.log("apk 文件分析完成!")
 
                 callback(null, result)
 
@@ -119,24 +105,6 @@ function readFileToHandle(filePath, fileName, callback){
 }
 
 /**
- * 将非 HTML 的内容进行转义
- * @param  {string} str 待转义字符串
- * @return {string}     已转义字符串
- */
-function html_encode(str) {   
-    var s = "";   
-    if (str.length == 0) return "";   
-    s = str.replace(/&/g, "&gt;");   
-    s = s.replace(/</g, "&lt;");   
-    s = s.replace(/>/g, "&gt;");   
-    s = s.replace(/ /g, "&nbsp;");   
-    s = s.replace(/\'/g, "&#39;");   
-    s = s.replace(/\"/g, "&quot;");   
-    s = s.replace(/\n/g, "<br>");   
-    return s;   
-}   
-
-/**
  * 清空指定文件夹, 指定文件夹必须存在
  * @param  {string} path 要清空的文件夹的路径
  */
@@ -149,7 +117,11 @@ function clearDir (path) {
     console.log('已清空文件夹');
 };
 
-
+/**
+ * 建立指定的结果空文件, 若已有文件, 则覆盖
+ * @param  {string} resultPath 结果文件夹的路径
+ * @param  {array } resultArr  结果文件名的数组
+ */
 function creatEmptyFile(resultPath, resultArr){
     resultArr.forEach(function(item){
         fs.writeFile(resultPath + item + ".txt", "", function(err){if(err) throw err; })
@@ -159,30 +131,35 @@ function creatEmptyFile(resultPath, resultArr){
 /**
  * 根据进程名称杀死所有符合该进程名的进程
  * @param  {string}   name     进程名称
- * @return {[type]}      [description]
  */
 function killThreadByName(name){
     if (process.platform === "win32") {
         findPIDbyNameInWindows(name, function(err, pidArr){
             if(err) throw err;
 
-            pidArr.forEach(function(item){
-                cp.exec(`taskkill /F /PID ${item}`, function(err, stdout, stderr){
-                    if(err) {return console.log(err)};
-                    console.log(stdout, stderr);
+            setTimeout(function(){
+                pidArr.forEach(function(item){
+                    cp.exec(`taskkill /F /PID ${item}`, function(err, stdout, stderr){
+                        if(err) {return console.log(err)};
+                        console.log(stdout, stderr);
+                    })
                 })
-            })
+            }, 2000);
+            
         })
     } else if (process.platform === "linux") {
         findPIDbyNameInLinux(name, function(err, pidArr){
             if(err) throw err;
 
-            pidArr.forEach(function(item){
-                cp.exec(`kill -s 9 ${item}`, function(err, stdout, stderr){
-                    if(err) {return console.log(err)};
-                    console.log(stdout, stderr);
+            setTimeout(function(){
+                pidArr.forEach(function(item){
+                    cp.exec(`kill -s 9 ${item}`, function(err, stdout, stderr){
+                        if(err) {return console.log(err)};
+                        console.log(stdout, stderr);
+                    })
                 })
-            })
+            }, 2000)
+
         })
     } else {
         throw new Error("杀死进程任务，尚不兼容当前平台")
