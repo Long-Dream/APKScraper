@@ -11,7 +11,7 @@
 * nodeJs
 * npm
 * mongodb
-* [分析程序网页端服务器文件](https://coding.net/u/Long-Dream/p/AndroidSDK/git)
+* [分析程序网页端服务器文件](https://github.com/Long-Dream/AndroidSDK)
 
 ## 构建方法
 
